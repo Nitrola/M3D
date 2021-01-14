@@ -1,4 +1,4 @@
-CFLAGS=-Wall -O3
+CFLAGS=-Wall -ggdb3 -O3
 CC=g++ $(CFLAGS)
 EXEC=M3D
 SRCS= $(wildcard *.cpp)
@@ -11,4 +11,4 @@ M3D: $(OBJS)
 
 .PHONY: clean
 clean:
-	rm -f *.o *.tga M3D core 
+	rm -f *.o M3D core 
