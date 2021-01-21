@@ -137,6 +137,65 @@ void fill_triangle(Point verts[],TGAImage& image, TGAColor color){
 }
 
 
+Vec3f interpol(Point verts[],int x,int y){
+    float v1,v2,v3;
+    // math stuff
+    v1 = 
+    1.0 * ((verts[1].y - verts[2].y) * (x - verts[2].x) + (verts[2].x - verts[1].x) * (y - verts[2].y)) 
+    / ((verts[1].y - verts[2].y) * (verts[0].x - verts[2].x)+(verts[2].x - verts[1].x) * (verts[0].y - verts[2].y));
+      
+    v2 = 
+    1.0f * ((verts[2].y - verts[0].y) * (x - verts[2].x) + (verts[0].x - verts[2].x) * (y - verts[2].y))
+    /((verts[1].y - verts[2].y) * (verts[0].x - verts[2].x )+(verts[2].x - verts[1].x) * (verts[0].y - verts[2].y));
+    
+    v3 = 1.0 - v1 - v2;
+    return Vec3f(v1,v2,v3);
+    
+}
+
+void fill_triangle_interpole(Point verts[],TGAImage& image, TGAColor color){
+    
+    //we start by sorting the points by theirs y coordinate
+    if (verts[0].y > verts[1].y) 
+        std::swap(verts[0],verts[1]);
+    if (verts[0].y > verts[2].y) 
+        std::swap(verts[2],verts[0]);
+    if (verts[1].y > verts[2].y) 
+        std::swap(verts[1],verts[2]);
+
+    // then we search for the one which is the furthers left and right
+    int lx=verts[0].x,rx=verts[0].x;
+    // further left
+    if(verts[1].x < lx)
+        lx = verts[1].x;
+    if(verts[2].x < lx)
+        lx = verts[2].x;
+    // further right
+    if(verts[1].x > rx)
+        rx = verts[1].x;
+    if(verts[2].x > rx)
+        rx = verts[2].x;
+    // we construct a square around the triangle
+    Point square[4] = {
+        {lx,verts[0].y},
+        {rx,verts[0].y},
+        {lx,verts[2].y},
+        {rx,verts[2].y}
+    };
+    //we check with interpolation if any pixel of the box is inside
+    //and draw them if they are
+    for(int x=lx; x <=rx; x++){
+        for(int y=verts[0].y; y<=verts[2].y; y++){
+            Vec3f v = interpol(verts,x,y);
+            if( v.x <= 1.0 && v.x >= -0.01 &&
+                v.y <= 1.0 && v.y >= -0.01 && 
+                v.z <= 1.0 && v.z >= -0.01){
+                draw_pixel(x,y,image,color);
+            }
+        }
+    }
+}
+
 void filled_model(Model* model,float scale,TGAImage& image, TGAColor color){
     Point verts[3];
     std::srand(time(0));
@@ -147,7 +206,7 @@ void filled_model(Model* model,float scale,TGAImage& image, TGAColor color){
             verts[j].y = (model->vert(face[j]).y + 1.) * scale;
         }
         TGAColor face_color = TGAColor(std::rand() * 255,std::rand() * 255,std::rand() * 255,255);
-        fill_triangle(verts,image,face_color);
+        fill_triangle_interpole(verts,image,face_color);
     }
 }
 
@@ -160,7 +219,7 @@ void fill_model_light(Model* model,float scale,TGAImage& image){
         for(int j=0;j<3;j++){
             verts[j].x = (model->vert(face[j]).x + 1.) * scale;
             verts[j].y = (model->vert(face[j]).y + 1.) * scale;
-            
+                
             vec_verts[j] = model->vert(face[j]);
             
         }
@@ -170,7 +229,7 @@ void fill_model_light(Model* model,float scale,TGAImage& image){
         // Projection of the normal on the light
         float light_intensity = normal*light;
         if(light_intensity > 0){
-            fill_triangle(verts,image,
+            fill_triangle_interpole(verts,image,
                         TGAColor(255*light_intensity,
                                 255*light_intensity,
                                 255*light_intensity,
@@ -208,7 +267,7 @@ int main(int argc, char*argv[]){
     //draw_triangle(triangle_verts,triangle_image,red);
     Point filled_triangle_verts[3] = {p2,p3,p4};
     
-    fill_triangle(filled_triangle_verts,triangle_image,green);
+    fill_triangle_interpole(filled_triangle_verts,triangle_image,green);
     draw_triangle(filled_triangle_verts,triangle_image,red);
     // draw the border over the triangle to check
     //triangle_image.flip_vertically();   
