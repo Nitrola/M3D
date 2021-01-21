@@ -34,12 +34,8 @@ void draw_line(Point p1, Point p2,TGAImage &image,TGAColor color){
     int dirx = p1.x < p2.x ? 1 : -1;
     int diry = p1.y < p2.y ? 1 : -1;
         
-    
-    // slope of the line
-    // 1.f of it's a straight line
     float derr = dy + dx;
     float err;
-    
     
     while(1){
             draw_pixel(p1.x,p1.y,image,color);
@@ -80,7 +76,6 @@ void wireframe(Model* model,float scale,TGAImage& image, TGAColor color){
         }
     }
 }
-
 
 
 void draw_triangle(Point verts[],TGAImage& image, TGAColor color){
@@ -128,6 +123,7 @@ void fill_triangle(Point verts[],TGAImage& image, TGAColor color){
     
     posX = (float)verts[2].x;
     posY = (float)verts[2].x;
+
     //bottom half
     for(int i = verts[2].y;i >= verts[1].y ; i--){
         draw_line(start,end,image,color);
@@ -137,9 +133,9 @@ void fill_triangle(Point verts[],TGAImage& image, TGAColor color){
         end.y--;
         start.x = (int)posX;
         end.x = (int)posY;
-    }
-    
+    }    
 }
+
 
 void filled_model(Model* model,float scale,TGAImage& image, TGAColor color){
     Point verts[3];
@@ -155,6 +151,34 @@ void filled_model(Model* model,float scale,TGAImage& image, TGAColor color){
     }
 }
 
+void fill_model_light(Model* model,float scale,TGAImage& image){
+    Point verts[3];
+    Vec3f light = Vec3f(0.0,.0,-1.0);
+    Vec3f vec_verts[3];
+    for(int i=0; i < model->nb_faces();i++){
+        std::vector<int> face = model->face(i);
+        for(int j=0;j<3;j++){
+            verts[j].x = (model->vert(face[j]).x + 1.) * scale;
+            verts[j].y = (model->vert(face[j]).y + 1.) * scale;
+            
+            vec_verts[j] = model->vert(face[j]);
+            
+        }
+        // normal vector of the face orthogonal to the Point 0
+        Vec3f normal = (vec_verts[2] - vec_verts[0])^(vec_verts[1] - vec_verts[0]);
+        normal.normalize();
+        // Projection of the normal on the light
+        float light_intensity = normal*light;
+        if(light_intensity > 0){
+            fill_triangle(verts,image,
+                        TGAColor(255*light_intensity,
+                                255*light_intensity,
+                                255*light_intensity,
+                                255)
+                        );
+        }
+    }
+}
 
 int main(int argc, char*argv[]){
     
@@ -169,6 +193,7 @@ int main(int argc, char*argv[]){
     TGAImage wired_model_image(400,400,TGAImage::RGB);
     TGAImage triangle_image(200,200,TGAImage::RGB);
     TGAImage filled_model_image(400,400,TGAImage::RGB);
+    TGAImage filled_lighted_model_image(400,400,TGAImage::RGB);
     mkdir("output",0777);
     
     //lines
@@ -197,9 +222,17 @@ int main(int argc, char*argv[]){
     wired_model_image.flip_vertically();
     wired_model_image.write_tga_file("output/model.tga");
     
+    // filled with random colors
     filled_model(african_head,400/2.,filled_model_image,white);
     filled_model_image.flip_vertically();
     filled_model_image.write_tga_file("output/filled_model.tga");
+    
+    // filled with light
+    fill_model_light(african_head,400/2,filled_lighted_model_image);
+    filled_lighted_model_image.flip_vertically();
+    filled_lighted_model_image.write_tga_file("output/filled_lighted_model.tga");
+    
+    
     //freeing memory
     delete african_head;
     
