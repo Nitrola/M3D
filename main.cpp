@@ -143,6 +143,10 @@ void fill_triangle(Point verts[],TGAImage& image, TGAColor color){
 }
 
 
+Vec3f world2screen(Vec3f v) {
+    return Vec3f(int((v.x+1.f)*width/2.+.5), int((v.y+1.)*height/2.+.5), v.z);
+}
+
 Vec3f interpol(Point verts[],int x,int y){
     float v1,v2,v3;
     
@@ -174,7 +178,7 @@ Vec3f barycentric(Vec3f A, Vec3f B, Vec3f C, Vec3f P) {
         return Vec3f(1.f-(u.x+u.y)/u.z, u.y/u.z, u.x/u.z);
     return Vec3f(-1,1,1); // in this case generate negative coordinates, it will be thrown away by the rasterizator
 }
-void fill_triangle_interpole(Point verts[],int zbuffer[],TGAImage& image, TGAColor color){
+void fill_triangle_interpole(Point verts[],float zbuffer[],TGAImage& image, TGAColor color){
     // square formed by the triangle
     int lx=verts[0].x,rx=verts[0].x,ly=verts[0].y,ry=verts[0].y;
     for(int i=0;i < 3;i++){
@@ -185,7 +189,7 @@ void fill_triangle_interpole(Point verts[],int zbuffer[],TGAImage& image, TGACol
     }
     //we check with interpolation if any pixel of the box is inside
     //and draw them if they are
-    int z = 0;
+    float z = 0;
     for(int x=lx; x <=rx; x++){
         for(int y=ly; y<=ry; y++){
             Vec3f v = interpol(verts,x,y);z = 0;
@@ -204,7 +208,7 @@ void fill_triangle_interpole(Point verts[],int zbuffer[],TGAImage& image, TGACol
     }
 }
 
-void fill_triangle_interpole(Point verts[],Vec3f vec_vert[], int zbuffer[],TGAImage& image, TGAImage texture,Vec3f vec_texture[],float light_intensity){
+void fill_triangle_interpole(Point verts[],Vec3f vec_vert[], float zbuffer[],TGAImage& image, TGAImage texture,Vec3f vec_texture[],float light_intensity){
     // square formed by a triangle 
     int lx=verts[0].x,rx=verts[0].x,ly=verts[0].y,ry=verts[0].y;
     for(int i=0;i < 3;i++){
@@ -215,14 +219,14 @@ void fill_triangle_interpole(Point verts[],Vec3f vec_vert[], int zbuffer[],TGAIm
     }
     //we check with interpolation if any pixel of the box is inside
     //and draw them if they are
-    int z = 0;
+    float z = 0;
     Vec3f P;
     for(int x=lx; x <=rx; x++){
         for(int y=ly; y<=ry; y++){
             P.x = (float)x;
             P.y = (float)y;
-            Vec3f v = interpol(verts,x,y);
-            z = 0;
+            Vec3f v = barycentric(vec_vert[0],vec_vert[1],vec_vert[2],P);
+            //z = 0;
             for(int i=0;i<3;i++){
                 z += vec_vert[i][2] * v[i];
             }
@@ -264,7 +268,7 @@ void filled_model(Model* model,float scale,TGAImage& image, TGAColor color){
     }
 }
 
-void fill_model_light(Model* model,int zbuffer[],float scale,TGAImage& image){
+void fill_model_light(Model* model,float zbuffer[],float scale,TGAImage& image){
     Point verts[3];
     Vec3f light = Vec3f(0.0,.0,-1.0);
     Vec3f vec_verts[3];
@@ -292,25 +296,30 @@ void fill_model_light(Model* model,int zbuffer[],float scale,TGAImage& image){
     }
 }
 
-void fill_model_texture(Model* model,TGAImage texture,int zbuffer[],float scale,TGAImage& image){
+void fill_model_texture(Model* model,TGAImage texture,float zbuffer[],float scale,TGAImage& image){
     Point verts[3];
     Vec3f light = Vec3f(0.0,.0,-1.0);
     Vec3f vec_verts[3];
+    Vec3f vec_normalised[3];
     Vec3f vec_texture[3];
     for(int i=0; i < model->nb_faces();i++){
         std::vector<int> face = model->face(i);
         for(int j=0;j<3;j++){
             verts[j].x = (model->vert(face[j]).x + 1.) * scale;
             verts[j].y = (model->vert(face[j]).y + 1.) * scale;
-            vec_verts[j] = model->vert(face[j]);
-            //vec_texture[j] = model->vert_texture(face[j]);
+            
+            vec_verts[j] = world2screen(model->vert(face[j]));
         } 
         std::vector<int> face_texture = model->face_texture(i);
         for(int j=0;j<3;j++){
             vec_texture[j] = model->vert_texture(face_texture[j]);
         }
+        std::vector<int> face_normals = model->face_normals(i);
+        for(int j=0;j<3;j++){
+            vec_normalised[j] = model->vert(face[j]);
+        }
         // normal vector of the face orthogonal to the Point 0
-        Vec3f normal = cross(vec_verts[2] - vec_verts[0],vec_verts[1] - vec_verts[0]);
+        Vec3f normal = cross(vec_normalised[2] - vec_normalised[0],vec_normalised[1] - vec_normalised[0]);
         normal.normalize();
         // Projection of the normal on the light
         float light_intensity = normal*light;
@@ -356,9 +365,9 @@ int main(int argc, char*argv[]){
     triangle_image.write_tga_file("output/triangle.tga");
     
     //model to display
-    Model *african_head = new Model("models/african_head.obj");
+    Model *african_head = new Model("models/diablo3_pose.obj");
     TGAImage difuse_african_head(1024,1024,TGAImage::RGB);
-    difuse_african_head.read_tga_file("models/african_head_diffuse.tga");
+    difuse_african_head.read_tga_file("models/diablo3_pose_diffuse.tga");
     difuse_african_head.flip_vertically();
     //wireframe model
     wireframe(african_head,400/2.,wired_model_image,green);
@@ -371,9 +380,9 @@ int main(int argc, char*argv[]){
     filled_model_image.write_tga_file("output/filled_model.tga");
     
     // filled with light
-    int zbuffer[width*height];
+    float zbuffer[width*height];
     for(int i = 0 ; i < width*height;i++){
-        zbuffer[i] = std::numeric_limits<int>::min();
+        zbuffer[i] = -std::numeric_limits<float>::max();
     }
 
     fill_model_light(african_head, zbuffer,height/2,filled_lighted_model_image);
@@ -381,7 +390,7 @@ int main(int argc, char*argv[]){
     filled_lighted_model_image.write_tga_file("output/filled_lighted_model.tga");
     
     for(int i = 0 ; i < width*height;i++){
-        zbuffer[i] = std::numeric_limits<int>::min();
+        zbuffer[i] = -std::numeric_limits<float>::max();
     }
     fill_model_texture(african_head,difuse_african_head,zbuffer, height/2,filled_textured_model_image);    
     filled_textured_model_image.flip_vertically();

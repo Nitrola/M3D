@@ -18,7 +18,10 @@ public:
     int nb_faces();
     Vec3f vert(int i);
     Vec3f vert_texture(int i);
+    Vec3f vert_normalised(int i);
     std::vector<int> face_texture(int idx);
+    std::vector<int> face_normals(int idx);
+
     std::vector<int> face(int idx);
 };
 

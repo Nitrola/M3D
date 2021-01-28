@@ -18,7 +18,7 @@ Model::Model(const char *filename) : verts(), faces() {
         if (!line.compare(0, 2, "v ")) {
             iss >> trash;
             Vec3f v;
-            for (int i=0;i<3;i++) iss >> v.raw[i];
+            for (int i=0;i<3;i++) iss >> v[i];
             
             verts.push_back(v);
         }else if (!line.compare(0, 3, "vn ")) {
@@ -30,7 +30,7 @@ Model::Model(const char *filename) : verts(), faces() {
             iss >> trash >> trash;
             Vec3f vt;
             for(int i=0;i<3;i++){ 
-                iss >> vt.raw[i];
+                iss >> vt[i];
             }
             vts.push_back(vt);
         }
@@ -64,6 +64,11 @@ int Model::nb_faces(){
 Vec3f Model::vert_texture(int i){
     return vts[i];
 }
+Vec3f Model::vert_normalised(int i){
+    return norms[i];
+}
+
+
 Vec3f Model::vert(int i){
     return verts[i];
 }
@@ -76,6 +81,11 @@ std::vector<int> Model::face(int idx) {
 std::vector<int> Model::face_texture(int idx) {
     std::vector<int> face;
     for (int i=0; i<(int)faces[idx].size(); i++) face.push_back(faces[idx][i][1]);
+    return face;
+}
+std::vector<int> Model::face_normals(int idx) {
+    std::vector<int> face;
+    for (int i=0; i<(int)faces[idx].size(); i++) face.push_back(faces[idx][i][2]);
     return face;
 }
 Model::~Model(){
